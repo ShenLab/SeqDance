@@ -1,15 +1,20 @@
 # SeqDance: A Protein Language Model for Representing Protein Dynamic Properties
 
+
 ## Abstract
 Proteins function by folding amino acid sequences into dynamic structural ensembles. Despite the central role of protein dynamics, their complexity and the absence of efficient representation methods have hindered their incorporation into studies of protein function and mutation fitness, particularly in deep learning applications. To address this challenge, we present SeqDance, a protein language model designed to learn representations of protein dynamic properties directly from sequence. SeqDance is pre-trained on dynamic biophysical properties derived from over 30,400 molecular dynamics trajectories and 28,600 normal mode analyses. Our results demonstrate that SeqDance effectively captures local dynamic interactions, co-movement patterns, and global conformational features, even for proteins without homologs in the pre-training set. Furthermore, SeqDance improves predictions of protein fitness landscapes, disorder-to-order transition binding regions, and phase-separating proteins. By learning dynamic properties from sequence, SeqDance complements traditional evolution- and structure-based methods, providing novel insights into protein behavior and function.
 
+
 ![SeqDance Pre-training Diagram](image/SeqDance_pretraining.png "Diagram of SeqDance Pre-training")
+
 
 ## Environment
 SeqDance was trained using Python (v3.12.2), PyTorch (v2.2.0), and the Transformers library (v4.39.1). For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml).
 
+
 ## Protein Dynamic Dataset
-All pre-training datasets used in SeqDance are publicly available:
+All pre-training datasets used in SeqDance are publicly available. If you are interested in using the extracted features, please contact us.
+
 
 | Source         | Description                                      | Number  | Method                            |
 |----------------|--------------------------------------------------|---------|------------------------------------|
@@ -19,14 +24,43 @@ All pre-training datasets used in SeqDance are publicly available:
 | [IDRome](https://github.com/KULL-Centre/_2023_Tesei_IDRome)       | Disordered regions                             | 28,058  | Coarse-grained MD, converted to all-atom |
 | [ProteinFlow](https://github.com/adaptyvbio/ProteinFlow)          | Ordered structures in PDB                      | 28,631  | Normal mode analysis               |
 
-For details on how we extracted features from molecular dynamics (MD) trajectories and normal mode analysis (NMA), check the code in [data_prepare](./data_prepare/). We extracted residue-level and pairwise dynamic features, capturing structural ensemble distributions:
+
+### Coarse-grained MD Conversion
+IDRome trajectories were converted to all-atom trajectories using [cg2all](https://github.com/huhlim/cg2all), with the following command:  
+`convert_cg2all -p top_ca.pdb -d traj.xtc -o traj_all.dcd -opdb top_all.pdb --cg CalphaBasedModel`
+
+
+### MD Trajectory Feature Extraction
+We extracted residue-level and pairwise dynamic features from MD trajectories:
 
 - **Residue-level features**: Root mean square fluctuation (RMSF), surface area, secondary structure (eight classes), and dihedral angles (phi, psi, chi1).
 - **Pairwise features**: Correlation of Cα movements, and frequencies of hydrogen bonds, salt bridges, Pi-cation, Pi-stacking, T-stacking, hydrophobic, and van der Waals interactions.
 
-For NMA data, we categorized normal modes into three frequency-based clusters. For each cluster, residue fluctuation and pairwise correlation maps were computed.
+[GetContacts](https://getcontacts.github.io/) was used to extract nine types of interactions from MD trajectories:
 
-If you are interested in using the extracted features, please contact us.
+```
+cd data_prepare/molecular_dynamics
+get_dynamic_contacts.py --itypes hb sb pc ps ts hp vdw --cores 2 --topology 3tvj_I.pdb --trajectory 3tvj_I_10frames.dcd --output 3tvj_I_10frames_contact.tsv
+```
+We recommend installing [GetContacts](https://getcontacts.github.io/) in a new conda environment. 
+
+
+After extract interactions, you can use [MDTraj](https://www.mdtraj.org/) to generate the residue-level and pairwise features with:
+```
+cd data_prepare/molecular_dynamics
+python MD_features.py -p 3tvj_I.pdb -t 3tvj_I_10frames.dcd -i 3tvj_I_10frames_contact.tsv -o 3tvj_I
+```
+We recommend installing [MDTraj](https://www.mdtraj.org/) in a new conda environment. 
+
+
+### Normal Mode Analysis Feature Extraction
+For NMA data, we used [ProDy](http://www.bahargroup.org/prody/index.html) to conduct the analysis. Normal modes were categorized into three frequency-based clusters. For each cluster, residue fluctuation and pairwise correlation maps were computed.  
+```
+cd data_prepare/normal_mode_analysis
+python NMA_features.py -i 2g3r.pdb -o nma_residue_pair_features_2g3r
+```
+We recommend installing [ProDy](http://www.bahargroup.org/prody/index.html) in a separate conda environment.
+
 
 ## SeqDance Pre-training and Usage
 For details on the model architecture and pre-training process, please refer to the code in the [model](./model/) directory.
