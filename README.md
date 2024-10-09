@@ -13,7 +13,7 @@ SeqDance was trained using Python (v3.12.2), PyTorch (v2.2.0), and the Transform
 
 
 ## Protein Dynamic Dataset
-All pre-training datasets used in SeqDance are publicly available. If you are interested in using the extracted features, please contact us.
+All pre-training datasets used in SeqDance are publicly available. 
 
 
 | Source         | Description                                      | Number  | Method                            |
@@ -42,7 +42,6 @@ We extracted residue-level and pairwise dynamic features from MD trajectories:
 cd data_prepare/molecular_dynamics
 get_dynamic_contacts.py --itypes hb sb pc ps ts hp vdw --cores 2 --topology 3tvj_I.pdb --trajectory 3tvj_I_10frames.dcd --output 3tvj_I_10frames_contact.tsv
 ```
-We recommend installing [GetContacts](https://getcontacts.github.io/) in a new conda environment. 
 
 
 After extract interactions, you can use [MDTraj](https://www.mdtraj.org/) to generate the residue-level and pairwise features with:
@@ -50,7 +49,6 @@ After extract interactions, you can use [MDTraj](https://www.mdtraj.org/) to gen
 cd data_prepare/molecular_dynamics
 python MD_features.py -p 3tvj_I.pdb -t 3tvj_I_10frames.dcd -i 3tvj_I_10frames_contact.tsv -o 3tvj_I
 ```
-We recommend installing [MDTraj](https://www.mdtraj.org/) in a new conda environment. 
 
 
 ### Normal Mode Analysis Feature Extraction
@@ -59,7 +57,7 @@ For NMA data, we used [ProDy](http://www.bahargroup.org/prody/index.html) to con
 cd data_prepare/normal_mode_analysis
 python NMA_features.py -i 2g3r.pdb -o nma_residue_pair_features_2g3r
 ```
-We recommend installing [ProDy](http://www.bahargroup.org/prody/index.html) in a separate conda environment.
+We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in different conda environments from the SeqDance pre-training environment. If you are interested in using the extracted features, please contact us.
 
 
 ## SeqDance Pre-training and Usage
