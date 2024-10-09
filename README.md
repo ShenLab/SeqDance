@@ -13,11 +13,9 @@ All pre-training datasets used in SeqDance are publicly available:
 
 | Source         | Description                                      | Number  | Method                            |
 |----------------|--------------------------------------------------|---------|------------------------------------|
-| **High resolution** |                                              |         |                                    |
 | [ATLAS](https://www.dsimb.inserm.fr/ATLAS/index.html)  | Ordered structures in PDB (no membrane proteins) | 1,516   | All-atom MD, 3x100 ns              |
 | [PED](https://proteinensemble.org/)              | Disordered regions                             | 382     | Experimental and other methods     |
 | [GPCRmd](https://www.gpcrmd.org/)               | Membrane proteins                              | 509     | All-atom MD, 3x500 ns              |
-| **Low resolution**  |                                              |         |                                    |
 | [IDRome](https://github.com/KULL-Centre/_2023_Tesei_IDRome)       | Disordered regions                             | 28,058  | Coarse-grained MD, converted to all-atom |
 | [ProteinFlow](https://github.com/adaptyvbio/ProteinFlow)          | Ordered structures in PDB                      | 28,631  | Normal mode analysis               |
 
@@ -29,3 +27,12 @@ For details on how we extracted features from molecular dynamics (MD) trajectori
 For NMA data, we categorized normal modes into three frequency-based clusters. For each cluster, residue fluctuation and pairwise correlation maps were computed.
 
 If you are interested in using the extracted features, please contact us.
+
+## SeqDance Pre-training and Usage
+For details on the model architecture and pre-training process, please refer to the code in the [model](./model/) directory.
+
+If you would like to use the pre-trained SeqDance weights in your own work, you can download here:  
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695)
+
+Follow the instructions in [notebook/pretrained_seqdance_attention_embedding.ipynb](notebook/pretrained_seqdance_attention_embedding.ipynb) for how to extract pairwise features-related attentions and how to get residue level embeddings.
+
