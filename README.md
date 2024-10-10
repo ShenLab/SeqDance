@@ -2,14 +2,28 @@
 
 
 ## Abstract
-Proteins function by folding amino acid sequences into dynamic structural ensembles. Despite the central role of protein dynamics, their complexity and the absence of efficient representation methods have hindered their incorporation into studies of protein function and mutation fitness, particularly in deep learning applications. To address this challenge, we present SeqDance, a protein language model designed to learn representations of protein dynamic properties directly from sequence. SeqDance is pre-trained on dynamic biophysical properties derived from over 30,400 molecular dynamics trajectories and 28,600 normal mode analyses. Our results demonstrate that SeqDance effectively captures local dynamic interactions, co-movement patterns, and global conformational features, even for proteins without homologs in the pre-training set. Furthermore, SeqDance improves predictions of protein fitness landscapes, disorder-to-order transition binding regions, and phase-separating proteins. By learning dynamic properties from sequence, SeqDance complements traditional evolution- and structure-based methods, providing novel insights into protein behavior and function.
+Proteins function by folding amino acid sequences into dynamic structural ensembles. Despite the central role of protein dynamics, their complexity and the absence of efficient representation methods have hindered their incorporation into studies of protein function and mutation fitness, particularly in deep learning applications. To address this challenge, we present SeqDance, a protein language model designed to learn representations of protein dynamic properties directly from sequence. SeqDance was pre-trained on dynamic biophysical properties derived from over 30,400 molecular dynamics trajectories and 28,600 normal mode analyses. Our results demonstrate that SeqDance effectively captures local dynamic interactions, co-movement patterns, and global conformational features, even for proteins without homologs in the pre-training set. Furthermore, SeqDance improves predictions of protein fitness landscapes, disorder-to-order transition binding regions, and phase-separating proteins. By learning dynamic properties from sequence, SeqDance complements conventional evolution- and static structure-based methods, providing novel insights into protein behavior and function.
 
 
 ![SeqDance Pre-training Diagram](image/SeqDance_pretraining.png "Diagram of SeqDance Pre-training")
 
 
-## Environment
-SeqDance was trained using Python (v3.12.2), PyTorch (v2.2.0), and the Transformers library (v4.39.1). For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml).
+## SeqDance Pre-training and Usage
+### Pre-training
+SeqDance was trained using Python (v3.12.2), PyTorch (v2.2.0), and the Transformers library (v4.39.1). For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
+```
+cd model
+torchrun --nnodes=1 --nproc_per_node=6 train_ddp.py
+```
+SeqDance is trained via [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html). The detailed hyperparameters are listed in [config](./model/config.py).  
+
+We provide the training sequences in the [dataset](./dataset/): in "sequence" column, we use `<linker>` to separate sequences in a complex; in "modify_seq" column, we use `<eos><cls>` instead.  
+
+If you are interested in using the extracted features (~100G size), please contact us.  
+
+
+### Pre-trained weight
+You can download the pre-trained SeqDance weights here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695). Follow the instructions in [notebook/pretrained_seqdance_attention_embedding.ipynb](notebook/pretrained_seqdance_attention_embedding.ipynb) for how to extract pairwise features-related attentions and how to get residue level embeddings.
 
 
 ## Protein Dynamic Dataset
@@ -27,9 +41,11 @@ All pre-training datasets used in SeqDance are publicly available.
 
 ### Coarse-grained MD Conversion
 IDRome trajectories were converted to all-atom trajectories using [cg2all](https://github.com/huhlim/cg2all), with the following command:  
-`convert_cg2all -p top_ca.pdb -d traj.xtc -o traj_all.dcd -opdb top_all.pdb --cg CalphaBasedModel`
+```
+convert_cg2all -p top_ca.pdb -d traj.xtc -o traj_all.dcd -opdb top_all.pdb --cg CalphaBasedModel
+```
 
-
+## Feature Extraction
 ### MD Trajectory Feature Extraction
 We extracted residue-level and pairwise dynamic features from MD trajectories:
 
@@ -49,6 +65,7 @@ After extract interactions, you can use [MDTraj](https://www.mdtraj.org/) to gen
 cd data_prepare/molecular_dynamics
 python MD_features.py -p 3tvj_I.pdb -t 3tvj_I_10frames.dcd -i 3tvj_I_10frames_contact.tsv -o 3tvj_I
 ```
+`-p`: PDB structure file; `-t`: MD trajectory file (.dcd format here); `-i`: interaction tsv file from GetContacts; `-o`: file name for residue features and pairwise features.
 
 
 ### Normal Mode Analysis Feature Extraction
@@ -57,20 +74,6 @@ For NMA data, we used [ProDy](http://www.bahargroup.org/prody/index.html) to con
 cd data_prepare/normal_mode_analysis
 python NMA_features.py -i 2g3r.pdb -o nma_residue_pair_features_2g3r
 ```
-We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in different conda environments from the SeqDance pre-training environment. 
+`-i`: PDB structure file; `-o`: file name for NMA features.
 
-
-## SeqDance Pre-training and Usage
-For details on the model architecture and pre-training process, please refer to the code in the [model](./model/) directory.
-```
-cd model
-torchrun --nnodes=1 --nproc_per_node=4 train_ddp.py
-```
-The detailed hyperparameters are listed in [config](./model/config.py).  
-We provide the training sequences in the [dataset](./dataset/). If you are interested in using the extracted features (~100G size), please contact us.  
-
-If you would like to use the pre-trained SeqDance weights in your own work, you can download here:  
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695)
-
-Follow the instructions in [notebook/pretrained_seqdance_attention_embedding.ipynb](notebook/pretrained_seqdance_attention_embedding.ipynb) for how to extract pairwise features-related attentions and how to get residue level embeddings.
-
+We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in different conda environments from the [SeqDance pre-training environment](SeqDance_env.yml).  

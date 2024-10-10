@@ -25,7 +25,7 @@ from torch.utils.data.distributed import DistributedSampler  # For distributed d
 
 from config import config  # Configuration settings for the training process
 from model import ESMwrap  # Wrap ESM for training
-from utils import WarmupDecaySchedule, get_data_emb_label, randomize_model, calculate_loss  # Utility functions
+from utils import WarmupDecaySchedule, randomize_model, calculate_loss  # Utility functions
 from dataset import ProteinDataset, collate_batch  # Dataset loading and batching
 
 #############################################################
