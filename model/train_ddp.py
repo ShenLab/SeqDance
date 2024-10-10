@@ -1,5 +1,4 @@
-# torchrun --nnodes=1 --nproc_per_node=4 ~/ProDance/code/model/train_ddp.py
-# nohup bash -c 'CUDA_VISIBLE_DEVICES=4,5,6,7 torchrun --nnodes=1 --nproc_per_node=4 ~/ProDance/code/model/train.py' &
+# torchrun --nnodes=1 --nproc_per_node=4 train_ddp.py
 
 import os
 import time
