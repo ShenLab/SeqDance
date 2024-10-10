@@ -1,4 +1,3 @@
-# Import necessary modules
 import math
 import pandas as pd
 import numpy as np
@@ -6,9 +5,9 @@ from sys import stdout
 import sys, getopt
 import mdtraj  # MDTraj is used to analyze molecular dynamics trajectories
 
-# Function to load the trajectory and PDB, select C-alpha atoms, and align the trajectory to the reference frame
+# Function to load the trajectory and PDB, select C-alpha atoms, and align the trajectory to the first frame
 def get_traj_info(traj_file, pdb_file):
-    traj = mdtraj.load_dcd(traj_file, pdb_file)  # Load trajectory and PDB
+    traj = mdtraj.load_dcd(traj_file, pdb_file)  # Load trajectory and PDB, if your file is not .dcd, please change load_dcd
     ca_atoms = traj.topology.select('name CA')  # Select C-alpha atoms
     traj.superpose(traj, 0, atom_indices=ca_atoms)  # Align all frames to the first one using C-alphas
     N = len(ca_atoms)  # Number of C-alpha atoms (residues)
@@ -34,7 +33,7 @@ def get_dssp_sasa_angle_rmsf_cor(traj, ca_atoms, N, n_frames):
     res_feat['sasa_mean'] = sasa.mean(axis=0)
     res_feat['sasa_std'] = sasa.std(axis=0)
     
-    # Calculate angles (phi, psi, chi1) and store angle percentages in 12 bins
+    # Calculate angles (phi, psi, chi1) and angle percentages in 12 bins
     angle_bins = [math.pi * (-1 + i/6) for i in range(0,13)]  # Define bins for angles
     chi1 = mdtraj.compute_chi1(traj)
     phi = mdtraj.compute_phi(traj)
@@ -51,9 +50,9 @@ def get_dssp_sasa_angle_rmsf_cor(traj, ca_atoms, N, n_frames):
         # Convert angle counts into a dataframe and merge with residue feature matrix
         angle_tab = pd.DataFrame(np.array(angle_count), columns=[f'{angle}_{k}' for k in range(12)])
         if angle == 'phi':
-            angle_tab.index = angles[angle][0][:,2]  # Use residue index for phi
+            angle_tab.index = angles[angle][0][:,2]  # residue index for phi
         else:
-            angle_tab.index = angles[angle][0][:,1]  # Use residue index for chi1 and psi
+            angle_tab.index = angles[angle][0][:,1]  # residue index for chi1 and psi
         angle_tab = angle_tab / n_frames  # Normalize by number of frames
 
         res_feat = pd.merge(res_feat, angle_tab, left_on='ca_atom', right_index=True, how='left')  # Merge with main feature matrix
@@ -63,16 +62,16 @@ def get_dssp_sasa_angle_rmsf_cor(traj, ca_atoms, N, n_frames):
 
     # Calculate pairwise covariance and correlation between C-alpha atoms
     ca_xyz = traj.xyz[:, ca_atoms, :]  # Extract XYZ coordinates for C-alphas
-    cov_3n = np.cov(ca_xyz.reshape((-1, len(ca_atoms) * 3)), rowvar=False)  # Calculate covariance matrix
+    cov_3n = np.cov(ca_xyz.reshape((-1, len(ca_atoms) * 3)), rowvar=False)  # Calculate covariance matrix of XYZ coordinates 
     cov_n = np.trace(cov_3n.reshape((N, 3, N, 3)), axis1=1, axis2=3)  # Trace to get covariance of C-alpha atoms
 
-    # Compute MSF (Mean Square Fluctuation) and normalize to create correlation matrix
+    # Normalize covariance matrix to create correlation matrix
     msf = np.diag(cov_n)
-    cor_n = cov_n / np.sqrt(np.outer(msf, msf))  # Normalize covariance to get correlation
+    cor_n = cov_n / np.sqrt(np.outer(msf, msf))
 
     return res_feat, cor_n  # Return residue-level features and correlation matrix
 
-# Function to compute pairwise contact maps based on interaction file
+# Function to compute pairwise contact maps based on interaction file from GetContacts
 def get_contact_maps(inter_file, N, n_frames):
     inter = pd.read_table(inter_file, skiprows=2, header=None)  # Read interaction data from file
     inter.columns = ['frame','interaction','atom1','atom2']

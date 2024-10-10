@@ -57,11 +57,17 @@ For NMA data, we used [ProDy](http://www.bahargroup.org/prody/index.html) to con
 cd data_prepare/normal_mode_analysis
 python NMA_features.py -i 2g3r.pdb -o nma_residue_pair_features_2g3r
 ```
-We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in different conda environments from the SeqDance pre-training environment. If you are interested in using the extracted features, please contact us.
+We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in different conda environments from the SeqDance pre-training environment. 
 
 
 ## SeqDance Pre-training and Usage
 For details on the model architecture and pre-training process, please refer to the code in the [model](./model/) directory.
+```
+cd model
+torchrun --nnodes=1 --nproc_per_node=4 train_ddp.py
+```
+The detailed hyperparameters are listed in [config](./model/config.py).  
+We provide the training sequences in the [dataset](./dataset/). If you are interested in using the extracted features (~100G size), please contact us.  
 
 If you would like to use the pre-trained SeqDance weights in your own work, you can download here:  
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695)
