@@ -12,10 +12,12 @@ Proteins function by folding amino acid sequences into dynamic structural ensemb
 ### Pre-training
 SeqDance was trained using Python (v3.12.2), PyTorch (v2.2.0), and the Transformers library (v4.39.1). For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
 ```
+conda env create -f SeqDance_env.yml
+conda activate seqdance
 cd model
 torchrun --nnodes=1 --nproc_per_node=6 train_ddp.py
 ```
-SeqDance is trained via [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html). The detailed hyperparameters are listed in [config](./model/config.py).  
+SeqDance is trained via [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html). The detailed hyperparameters are listed in [config](./model/config.py). The pre-training took ten days on a server with six A6000 GPUs. 
 
 We provide the training sequences in the [dataset](./dataset/): in "sequence" column, we use `<linker>` to separate sequences in a complex; in "modify_seq" column, we use `<eos><cls>` instead.  
 
@@ -23,7 +25,7 @@ If you are interested in using the extracted features (~100G size), please conta
 
 
 ### Pre-trained weight
-You can download the pre-trained SeqDance weights here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695). Follow the instructions in [notebook/pretrained_seqdance_attention_embedding.ipynb](notebook/pretrained_seqdance_attention_embedding.ipynb) for how to extract pairwise features-related attentions and how to get residue level embeddings.
+You can download the pre-trained SeqDance weights here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695). Follow the instructions in [notebook/pretrained_seqdance_attention_embedding.ipynb](notebook/pretrained_seqdance_attention_embedding.ipynb) for how to extract pairwise features-related attentions and how to get residue level embeddings. Please note that this demo may take a few minutes to complete.
 
 
 ## Protein Dynamic Dataset
@@ -60,7 +62,7 @@ get_dynamic_contacts.py --itypes hb sb pc ps ts hp vdw --cores 2 --topology 3tvj
 ```
 
 
-After extract interactions, you can use [MDTraj](https://www.mdtraj.org/) to generate the residue-level and pairwise features with:
+After extract interactions, you can use [MDTraj v1.9.9](https://www.mdtraj.org/) to generate the residue-level and pairwise features with:
 ```
 cd data_prepare/molecular_dynamics
 python MD_features.py -p 3tvj_I.pdb -t 3tvj_I_10frames.dcd -i 3tvj_I_10frames_contact.tsv -o 3tvj_I
@@ -76,4 +78,5 @@ python NMA_features.py -i 2g3r.pdb -o nma_residue_pair_features_2g3r
 ```
 `-i`: PDB structure file; `-o`: file name for NMA features.
 
-We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in different conda environments from the [SeqDance pre-training environment](SeqDance_env.yml).  
+We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in different conda environments from the [SeqDance pre-training environment](SeqDance_env.yml). Installing all required packages took about a hour in our server.  
+The feature extraction process is the most complicated step in our work, it took us over a month.

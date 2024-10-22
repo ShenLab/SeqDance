@@ -1,4 +1,4 @@
-name: torch2.2
+name: seqdance
 channels:
   - pytorch
   - anaconda
@@ -337,4 +337,4 @@ dependencies:
       - widgetsnbextension==4.0.10
       - wrapt==1.16.0
       - xgboost==2.1.0
-prefix: /share/descartes/Users/ch3849/anaconda3/envs/torch2.2
+prefix: /share/descartes/Users/ch3849/anaconda3/envs/seqdance
