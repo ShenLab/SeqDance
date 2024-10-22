@@ -71,7 +71,7 @@ python MD_features.py -p 3tvj_I.pdb -t 3tvj_I_10frames.dcd -i 3tvj_I_10frames_co
 
 
 ### Normal Mode Analysis Feature Extraction
-For NMA data, we used [ProDy](http://www.bahargroup.org/prody/index.html) to conduct the analysis. Normal modes were categorized into three frequency-based clusters. For each cluster, residue fluctuation and pairwise correlation maps were computed.  
+For NMA data, we used [ProDy v2.4.0](http://www.bahargroup.org/prody/index.html) to conduct the analysis. Normal modes were categorized into three frequency-based clusters. For each cluster, residue fluctuation and pairwise correlation maps were computed.  
 ```
 cd data_prepare/normal_mode_analysis
 python NMA_features.py -i 2g3r.pdb -o nma_residue_pair_features_2g3r
