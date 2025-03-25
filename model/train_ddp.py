@@ -1,200 +1,172 @@
-# torchrun --nnodes=1 --nproc_per_node=4 train_ddp.py
-
+# python -m torch.distributed.run --nnodes=1 --nproc_per_node=4 model/train_ddp.py
 import os
 import time
-import math
-from itertools import cycle
 import pandas as pd
 import random
-random.seed(0)  # Set random seed for reproducibility
+import json
+import shutil
 import numpy as np
-np.random.seed(0)  # Set numpy random seed for reproducibility
-import h5py  # Handle the large feature dataset in HDF5 format
+import h5py
 import torch
-torch.manual_seed(0)  # Set PyTorch random seed for reproducibility
-import torch.distributed as dist  # For distributed training
-import torch.nn.functional as F
+import torch.distributed as dist
 import torch.nn as nn
-from torch.nn.parallel import DistributedDataParallel as DDP  # Wrapping model for distributed training
-from transformers import AutoTokenizer  # SeqDance uses ESM2 tokenizer
-from torch.optim import AdamW  # Optimizer
-from torch.cuda.amp import autocast, GradScaler  # For Automatic Mixed Precision (AMP)
-from torch.utils.data import Dataset, DataLoader  # Data handling
-from torch.utils.data.distributed import DistributedSampler  # For distributed data loading
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim import AdamW
+from torch.amp import autocast, GradScaler
 
-from config import config  # Configuration settings for the training process
-from model import ESMwrap  # Wrap ESM for training
-from utils import WarmupDecaySchedule, randomize_model, calculate_loss  # Utility functions
-from dataset import ProteinDataset, collate_batch  # Dataset loading and batching
+from config import config
+from model import ESMwrap
+from utils import WarmupDecaySchedule, calculate_loss, get_dataloader_cycle_iter
+
+# for Reproducibility
+torch.manual_seed(config['training']['random_seed'])
+torch.cuda.manual_seed_all(config['training']['random_seed'])
+np.random.seed(config['training']['random_seed'])
+random.seed(config['training']['random_seed'])
 
 #############################################################
 # DDP model train
 #############################################################
-def DDP_model(seqdance):
-    # Initialize the distributed process group using NCCL (optimized for GPUs)
+def DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_update, short_update, save_per_update, get_dataloader_per_update, save_dir):
     dist.init_process_group("nccl")
-    rank = dist.get_rank()  # Get the rank of the current process (its ID in the distributed setup)
+    rank = dist.get_rank()
     print(f"Start running DDP on rank {rank}.")
 
-    # Determine the GPU to use based on the rank of the process
+    # create model and move it to GPU with id rank
     device_id = rank % torch.cuda.device_count()
+    dance_model = dance_model.to(device_id)
+    ddp_model = DDP(dance_model, device_ids=[device_id], find_unused_parameters=True)
 
-    # Move the model to the specified GPU
-    seqdance = seqdance.to(device_id)
+    """ mkdir, copy the code, save the initial model """
+    if rank == 0:
+        if save_dir is not None:
+            os.makedirs(save_dir, exist_ok=True)
+            # Copy the code to the save directory
+            shutil.copytree('/home/ch3849/ProDance/code_new/model/', os.path.join(save_dir, 'model'))
+            # Create a directory to save checkpoints
+            os.makedirs(os.path.join(save_dir, "checkpoints"), exist_ok=True)
 
-    # Wrap the model for distributed training, with gradients synchronized across devices
-    ddp_model = DDP(seqdance, device_ids=[device_id], find_unused_parameters=True)
+        # save the initial model and print the total trainable parameters
+        chk_path = os.path.join(save_dir, 'checkpoints', f'update_0.pt')
+        torch.save(ddp_model.module.state_dict(), chk_path)
+        print("total trainable params: ",sum(p.numel() for p in ddp_model.parameters() if p.requires_grad))
 
-    # Print total number of trainable parameters on rank 1
-    if rank == 1:
-        print("total trainable params: ", sum(p.numel() for p in ddp_model.parameters() if p.requires_grad))
-
-    # Create separate datasets for each source type and corresponding DataLoaders for training
-    four_dataset = [
-        ProteinDataset(df[df['source'].isin(source)].reset_index(drop=True), h5py_read, tokenizer, max_len) 
-        for source in [['ATLAS', 'GPCRmd', 'PED'], ['IDRome'], ['proteinflow_pdb'], ['proteinflow_sabdab']]
-    ]
-
-    four_loader = [
-        DataLoader(a_dataset, batch_size=batch_size, sampler=DistributedSampler(a_dataset), collate_fn=collate_batch, drop_last=True, num_workers=2, pin_memory=True) 
-        for a_dataset in four_dataset
-    ]
-
-    # Initialize the AdamW optimizer and the learning rate scheduler
     optimizer = AdamW(ddp_model.parameters(), lr=1.0, betas=config['optimizer']['betas'], eps=config['optimizer']['epsilon'], weight_decay=config['optimizer']['weight_decay'])
-    scheduler = WarmupDecaySchedule(optimizer, warmup_steps=config['optimizer']['warmup_step'], peak_lr=config['optimizer']['peak_lr'], total_steps=total_update)
+    scheduler = WarmupDecaySchedule(optimizer, model_select)
 
-    # Enable automatic mixed precision for faster training with lower memory usage
-    scaler = GradScaler()
+    # Enable AMP
+    scaler = GradScaler('cuda')
 
-    # Initialize variables for tracking time, loss, and updates
     start_time = time.time()
-    loss = 0
-    samples = []
-    loss_value = []
-    n_update = 0
-    batch_idx = 0
+    n_update = 0 # update counter
+    n_epoch = 0
+    n_batch_in_epoch = 0
+    max_len = config[model_select]['max_len_short']
 
-    # Start training loop, until the number of updates reaches the specified total
     while n_update <= total_update:
-        # Every `save_per_update` steps, save model checkpoint and reinitialize data iterators
-        if n_update % save_per_update == 0:
-            # Set the epoch for distributed samplers, ensuring a new shuffle each epoch
-            for a_loader in four_loader:
-                a_loader.sampler.set_epoch(n_update)
+        """ get the dataloader cycle iter, also change the max_len based on the number of update """
+        if (n_batch_in_epoch/config[model_select][f'update_batch_{max_len}']) % get_dataloader_per_update == 0:
+            log = {}
+            n_epoch += 1
+            n_batch_in_epoch = 0
+            # change the max_len
+            if n_update >= short_update:
+                max_len = config[model_select]['max_len_long']
 
-            # Create iterators for cyclic loading of datasets
-            four_cycle_iter = {
-                'atlas_gpcrmd_ped': iter(cycle(four_loader[0])), 
-                'idr': iter(cycle(four_loader[1])),
-                'pdb': iter(cycle(four_loader[2])),
-                'sabdab': iter(cycle(four_loader[3]))
-            }
-            # Save model state if on rank 0
-            if rank == 0:        
-                torch.save(ddp_model.module.state_dict(), f'update_{n_update}.tar')
+            three_cycle_iter = get_dataloader_cycle_iter(df, h5py_read, esm2_select, max_len, config[model_select][f'batch_size_{max_len}'], n_update, device_id)
 
-        # Increment the batch index
-        batch_idx += 1
-
-        # Loop through the sources in the config, and fetch data from each source in a cyclic manner
-        for source in config['training']['source_loop']:
-            data = next(four_cycle_iter[source])
-
-            # Move data to the correct GPU
+        """ training """
+        # one batch contains samples from three sources
+        for source in three_cycle_iter:
+            # get the data and move it to the device
+            data = next(three_cycle_iter[source])
             inputs = {"input_ids": data['input_ids'].to(device_id, non_blocking=True), "attention_mask": data['attention_mask'].to(device_id, non_blocking=True)}
             res_feat, pair_feat = data['res_feat'].to(device_id, non_blocking=True), data['pair_feat'].to(device_id, non_blocking=True)
-
-            # Perform forward pass using mixed precision (AMP)
-            with autocast():
+            
+            # forward pass, calculate the loss, and backward pass
+            with autocast(dtype=torch.float16, device_type='cuda'):
                 output = ddp_model(inputs)
                 losses = calculate_loss(source, output, res_feat, pair_feat)
-
-                # Calculate weighted loss for this batch
-                loss_batch = (losses['res_loss'] + losses['pair_loss']) * loss_weight[source] / update_batch
-
-            # Scale the loss, perform backpropagation
+                loss_batch = losses[f'{source}_loss'] / config[model_select][f'update_batch_{max_len}'] # devide by update_batch to get the mean loss
+                    
             scaler.scale(loss_batch).backward()
 
-            # Accumulate loss for logging
-            loss += loss_batch.item()
-            loss_value.append([round(losses['res_loss'].item(), 6), round(losses['pair_loss'].item(), 6)])
+            # mean loss per report (if report_per_update is 20, log the mean loss in the last 20 updates)
+            for feature in losses:
+                if feature in log.keys():
+                    log[feature] += losses[feature].item()/config[model_select][f'update_batch_{max_len}']/config['training']['report_per_update']
+                else:
+                    log[feature] = losses[feature].item()/config[model_select][f'update_batch_{max_len}']/config['training']['report_per_update']
+        
+        # update the batch counter after the for loop of three sources
+        n_batch_in_epoch += 1
 
-        # Once enough batches are processed, update the model
-        if batch_idx % update_batch == 0:
-            # Unscale the gradients before performing gradient clipping
+        """ update the model """
+        if n_batch_in_epoch % config[model_select][f'update_batch_{max_len}'] == 0:
             scaler.unscale_(optimizer)
-
-            # Clip gradients to prevent exploding gradients
             nn.utils.clip_grad_value_(ddp_model.parameters(), 0.5)
-
-            # Step the optimizer and the learning rate scheduler
             scheduler.step()
             scaler.step(optimizer)
             scaler.update()
-
-            # Zero the gradients for the next update
             optimizer.zero_grad()
 
-            # Increment the update counter
             n_update += 1
+            
+            """ logging """
+            if n_update % config['training']['report_per_update'] == 0:
+                update_time = time.time() - start_time
+                start_time = time.time()
 
-            # Calculate time taken for the batch
-            update_time = time.time() - start_time
-            start_time = time.time()
+                log = {
+                    "rank": rank,
+                    "n_epoch": n_epoch,
+                    "n_update": n_update,
+                    "n_batch_in_epoch": n_batch_in_epoch,
+                    "Batch time": update_time,
+                    "Learning Rate": scheduler.get_last_lr()[0],
+                    "Max_len": max_len,
+                    **log
+                }
+                # print(log)
 
-            # Log the progress including time, loss, learning rate, and batch details
-            print(f"rank: {rank}; n_update: {n_update}; Batch time: {update_time}; Loss: {loss}; Learning Rate: {scheduler.get_last_lr()[0]}; Loss_summary: {loss_value}")
+                # write the log to file
+                with open(f"{save_dir}/training_log.json", "a") as f:
+                    json.dump(log, f)
+                    f.write('\n')
+                log = {}
 
-            # Reset loss and value trackers for the next iteration
-            loss = 0
-            loss_value = []
+            """ save the model """
+            if n_update % save_per_update == 0:
+                chk_path = os.path.join(save_dir, 'checkpoints', f'update_{n_update}.pt')
+                if rank == 0 and not os.path.exists(chk_path):
+                    torch.save(ddp_model.module.state_dict(), chk_path)
 
-    # Clean up the distributed process group after training completes
     dist.destroy_process_group()
 
 if __name__ == "__main__":
 #############################################################
-# define the model and params
+# define the model
 #############################################################
-    esm2_select = 'model_35M'  # Select the ESM2 (35M)
-    
-    # use tokenizer of ESM2 model
-    tokenizer = AutoTokenizer.from_pretrained(config[esm2_select]['model_id'])
+    esm2_select = 'model_35M'
+    # model_select = 'seqdance' # seqdance: 35M, train all parameters, using attention to predict pair features
+    model_select = 'esmdance' # esmdance: 35M, freeze the ESM parameters, using attention to predict pair features
+    dance_model = ESMwrap(esm2_select, model_select)
+    dance_model.train() # use this to activate dropout
 
-    # Initialize the weights of the model (ESMwrap), donot use evolution information
-    seqdance = ESMwrap(esm2_select)
-
-    # Randomize model weights (useful for resetting any pre-trained weights)
-    seqdance = randomize_model(seqdance)
-
-    # Set the model to training mode (important for dropout layers, etc.)
-    seqdance.train()
-
-    # Load configuration parameters for training
-    total_update = config['training']['total_update']  # Total number of updates
-    save_per_update = config['training']['save_per_update']  # How often to save the model (in updates)
-    loss_weight = config['training']['loss_weight']  # Loss weights for different datasets
-    max_len = config['training']['max_len']  # Maximum sequence length for input data
-    batch_size = config[esm2_select]['batch_size']  # Batch size for data loading
-    update_batch = config[esm2_select]['update_batch']  # Number of batches per update (gradient step)
-    
 #############################################################
-# load the dataset
+# load the dataset and define key hyperparameters
 #############################################################
-    # Load training data
     df = pd.read_csv(config['file_path']['train_df_path'])
+    df = df[(df['label'] == 'train')]
     h5py_read = h5py.File(config['file_path']['h5py_path'], 'r')
 
-    # Load the evaluation dataset (and ensure it's excluded from the training set)
-    eval_list = pd.read_csv(config['file_path']['eval_df_path'])['name'].tolist()
-    df = df[~df['name'].isin(eval_list)].reset_index(drop=True)
-
-    # Change directory to the specified save path (where models will be stored)
-    os.chdir(config['file_path']['save_path'])
+    save_dir = config['file_path']['save_dir']
+    total_update = config[model_select]['total_update']
+    short_update = config[model_select]['short_update']
+    save_per_update = config['training']['save_per_update']
+    get_dataloader_per_update = config['training']['get_dataloader_per_update']
 
 #############################################################
-# distributed train
+# training
 #############################################################
-    # Start distributed training with DDP_model function
-    DDP_model(seqdance)
+    DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_update, short_update, save_per_update, get_dataloader_per_update, save_dir)

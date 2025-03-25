@@ -1,29 +1,29 @@
-# SeqDance: A Protein Language Model for Representing Protein Dynamic Properties
+# SeqDance and ESMDance: Protein Language Models Trained on Protein Dynamic Properties
 
 
 ## Abstract
-Proteins function by folding amino acid sequences into dynamic structural ensembles. Despite the central role of protein dynamics, their complexity and the absence of efficient representation methods have hindered their incorporation into studies of protein function and mutation fitness, particularly in deep learning applications. To address this challenge, we present SeqDance, a protein language model designed to learn representations of protein dynamic properties directly from sequence. SeqDance was pre-trained on dynamic biophysical properties derived from over 30,400 molecular dynamics trajectories and 28,600 normal mode analyses. Our results demonstrate that SeqDance effectively captures local dynamic interactions, co-movement patterns, and global conformational features, even for proteins without homologs in the pre-training set. Furthermore, SeqDance improves predictions of protein fitness landscapes, disorder-to-order transition binding regions, and phase-separating proteins. By learning dynamic properties from sequence, SeqDance complements conventional evolution- and static structure-based methods, providing novel insights into protein behavior and function.
+Proteins function by folding amino acid sequences into dynamic structural ensembles. Despite the important role of protein dynamics, their inherent complexity and the absence of efficient integration methods have limited their incorporation into deep learning models for studying protein behaviors and mutation effects. To address this, we developed SeqDance and ESMDance, protein language models pre-trained on dynamic biophysical properties derived from molecular dynamics trajectories of over 35,800 proteins and normal mode analyses of over 28,500 proteins. SeqDance, which operates solely on sequence input, captures local dynamic interactions and global conformation properties for both ordered and disordered proteins, even for proteins without homologs in the pre-training dataset. SeqDance predicted dynamic property changes are predictive of mutation effects on protein folding stability. ESMDance, which utilizes ESM2 outputs, significantly outperforms ESM2 in zero-shot prediction of mutation effects for designed and viral proteins. SeqDance and ESMDance offer novel insights into protein behaviors and mutation effects through the perspective of protein dynamics.
 
 
 ![SeqDance Pre-training Diagram](image/SeqDance_pretraining.png "Diagram of SeqDance Pre-training")
 
 
-## SeqDance Pre-training and Usage
+## SeqDance/ESMDance Pre-training and Usage
 ### Pre-training
-SeqDance was trained using Python, PyTorch, and the Transformers library. For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
+SeqDance/ESMDance were trained using Python, PyTorch, and the Transformers library. For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
 ```
 conda env create -f SeqDance_env.yml
 conda activate seqdance
-cd model
-torchrun --nnodes=1 --nproc_per_node=6 train_ddp.py
+python -m torch.distributed.run --nnodes=1 --nproc_per_node=4 model/train_ddp.py
 ```
-SeqDance is trained via [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html). The detailed hyperparameters are listed in [config](./model/config.py). The pre-training took ten days on a server with six A6000 GPUs. 
+If you don't want to use SeqDance_env.yml, a new environment with pytorch=2.5.1, transformers=4.48.2, and h5py (install three packages with conda) should work for the pre-training. We provide the training sequences and extracted features in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties), please process the data as described in Hugging face before pre-training the model.
 
-We provide the training sequences and extracted features in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties).
+SeqDance/ESMDance were trained via [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html). The detailed hyperparameters are listed in [config](./model/config.py). The pre-training took ten days on a server with four L40s GPUs. 
+
 
 
 ### Pre-trained weight
-You can download the pre-trained SeqDance weights here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695). Follow the instructions in [notebook/pretrained_seqdance_attention_embedding.ipynb](notebook/pretrained_seqdance_attention_embedding.ipynb) for how to extract pairwise features-related attentions and how to get residue level embeddings. Please note that this demo may take a few minutes to complete.
+You can download the pre-trained SeqDance weights here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695). 
 
 
 ## Protein Dynamic Dataset
@@ -32,6 +32,7 @@ All pre-training datasets used in SeqDance are publicly available.
 
 | Source         | Description                                      | Number  | Method                            |
 |----------------|--------------------------------------------------|---------|------------------------------------|
+| [ATLAS](https://www.dsimb.inserm.fr/ATLAS/index.html)  | Ordered structures in PDB (no membrane proteins) | 1,516   | All-atom MD, 3x100 n              |
 | [ATLAS](https://www.dsimb.inserm.fr/ATLAS/index.html)  | Ordered structures in PDB (no membrane proteins) | 1,516   | All-atom MD, 3x100 ns              |
 | [PED](https://proteinensemble.org/)              | Disordered regions                             | 382     | Experimental and other methods     |
 | [GPCRmd](https://www.gpcrmd.org/)               | Membrane proteins                              | 509     | All-atom MD, 3x500 ns              |
