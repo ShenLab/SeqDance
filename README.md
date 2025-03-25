@@ -32,12 +32,12 @@ All pre-training datasets used in SeqDance are publicly available.
 
 | Source         | Description                                      | Number  | Method                            |
 |----------------|--------------------------------------------------|---------|------------------------------------|
-| [ATLAS](https://www.dsimb.inserm.fr/ATLAS/index.html)  | Ordered structures in PDB (no membrane proteins) | 1,516   | All-atom MD, 3x100 n              |
+| [mdCATH](https://huggingface.co/datasets/compsciencelab/mdCATH)  | Ordered structures in PDB | 5,392   | All-atom MD, 5x464 ns              |
 | [ATLAS](https://www.dsimb.inserm.fr/ATLAS/index.html)  | Ordered structures in PDB (no membrane proteins) | 1,516   | All-atom MD, 3x100 ns              |
 | [PED](https://proteinensemble.org/)              | Disordered regions                             | 382     | Experimental and other methods     |
 | [GPCRmd](https://www.gpcrmd.org/)               | Membrane proteins                              | 509     | All-atom MD, 3x500 ns              |
 | [IDRome](https://github.com/KULL-Centre/_2023_Tesei_IDRome)       | Disordered regions                             | 28,058  | Coarse-grained MD, converted to all-atom |
-| [ProteinFlow](https://github.com/adaptyvbio/ProteinFlow)          | Ordered structures in PDB                      | 28,631  | Normal mode analysis               |
+| [ProteinFlow](https://github.com/adaptyvbio/ProteinFlow)          | Ordered structures in PDB                      | 28,546  | Normal mode analysis               |
 
 
 ### Coarse-grained MD Conversion
@@ -79,3 +79,9 @@ python NMA_features.py -i 2g3r.pdb -o nma_residue_pair_features_2g3r
 
 We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in different conda environments from the [SeqDance pre-training environment](SeqDance_env.yml). Installing all required packages took about a hour in our server.  
 The feature extraction process is the most complicated step in our work, it took us over a month.
+
+
+## Citation
+SeqDance: A Protein Language Model for Representing Protein Dynamic Properties
+Chao Hou, Yufeng Shen
+bioRxiv 2024.10.11.617911; doi: https://doi.org/10.1101/2024.10.11.617911
