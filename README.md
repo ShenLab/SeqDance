@@ -10,7 +10,7 @@ Proteins function by folding amino acid sequences into dynamic structural ensemb
 
 ## SeqDance Pre-training and Usage
 ### Pre-training
-SeqDance was trained using Python (v3.12.2), PyTorch (v2.2.0), and the Transformers library (v4.39.1). For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
+SeqDance was trained using Python, PyTorch, and the Transformers library. For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
 ```
 conda env create -f SeqDance_env.yml
 conda activate seqdance
@@ -19,9 +19,7 @@ torchrun --nnodes=1 --nproc_per_node=6 train_ddp.py
 ```
 SeqDance is trained via [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html). The detailed hyperparameters are listed in [config](./model/config.py). The pre-training took ten days on a server with six A6000 GPUs. 
 
-We provide the training sequences in the [dataset](./dataset/): in "sequence" column, we use `<linker>` to separate sequences in a complex; in "modify_seq" column, we use `<eos><cls>` instead.  
-
-If you are interested in using the extracted features (~100G size), please contact us.  
+We provide the training sequences and extracted features in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties).
 
 
 ### Pre-trained weight
