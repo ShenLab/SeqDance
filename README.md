@@ -4,26 +4,38 @@
 ## Abstract
 Proteins function by folding amino acid sequences into dynamic structural ensembles. Despite the important role of protein dynamics, their inherent complexity and the absence of efficient integration methods have limited their incorporation into deep learning models for studying protein behaviors and mutation effects. To address this, we developed SeqDance and ESMDance, protein language models pre-trained on dynamic biophysical properties derived from molecular dynamics trajectories of over 35,800 proteins and normal mode analyses of over 28,500 proteins. SeqDance, which operates solely on sequence input, captures local dynamic interactions and global conformation properties for both ordered and disordered proteins, even for proteins without homologs in the pre-training dataset. SeqDance predicted dynamic property changes are predictive of mutation effects on protein folding stability. ESMDance, which utilizes ESM2 outputs, significantly outperforms ESM2 in zero-shot prediction of mutation effects for designed and viral proteins. SeqDance and ESMDance offer novel insights into protein behaviors and mutation effects through the perspective of protein dynamics.
 
-
 ![SeqDance Pre-training Diagram](image/SeqDance_pretraining.png "Diagram of SeqDance Pre-training")
 
+## !!! Data and weight
+Training sequences and extracted features: [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties)
+Pre-trained SeqDance/ESMDance weights: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15047777.svg)](https://doi.org/10.5281/zenodo.15047777). 
 
-## SeqDance/ESMDance Pre-training and Usage
-### Pre-training
-SeqDance/ESMDance were trained using Python, PyTorch, and the Transformers library. For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
+
+## SeqDance/ESMDance Pre-training
+SeqDance and ESMDance, both consist of Transformer encoders and dynamic property prediction heads. The Transformer encoder follows the same architecture as ESM2-35M, with 12 layers and 20 attention heads per layer. Both models take protein sequences as input and predict residue-level and pairwise dynamic properties. The dynamic property prediction heads containing 1.2 million trainable parameters.  
+In SeqDance, all parameters were randomly initialized, allowing the model to learn dynamic properties from scratch. In ESMDance, all ESM2-35M parameters were frozen, enabling the model to leverage the evolutionary information captured by ESM2-35M to predict dynamic properties.
+
+For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
 ```
 conda env create -f SeqDance_env.yml
 conda activate seqdance
 python -m torch.distributed.run --nnodes=1 --nproc_per_node=4 model/train_ddp.py
 ```
-If you don't want to use SeqDance_env.yml, a new environment with pytorch=2.5.1, transformers=4.48.2, and h5py (install three packages with conda) should work for the pre-training. We provide the training sequences and extracted features in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties), please process the data as described in Hugging face before pre-training the model.
+In our experiment, a new conda environment with pytorch=2.5.1, transformers=4.48.2, and h5py installed with conda worked for the pre-training. We provide the training sequences and extracted features in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties), please process the data as described in Hugging face before pre-training the model.
 
 SeqDance/ESMDance were trained via [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html). The detailed hyperparameters are listed in [config](./model/config.py). The pre-training took ten days on a server with four L40s GPUs. 
 
 
+## SeqDance/ESMDance Usage
+### Zero-shot prediction of mutation effect
+Using SeqDance/ESMDance to predict the dynamic properties of both wild-type and mutated sequences, calculate the relative changes of dynamic properties after mutation, infer mutation effects with these relative changes. 
+![Zero-shot](image/zero_shot.png "Zero-shot")
 
-### Pre-trained weight
-You can download the pre-trained SeqDance weights here: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13909695.svg)](https://doi.org/10.5281/zenodo.13909695). 
+
+### Application of embeddings
+
+
+### SeqDance's attention capture protein dynamic interactions
 
 
 ## Protein Dynamic Dataset
