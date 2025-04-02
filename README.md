@@ -45,11 +45,11 @@ Predict **dynamic properties** for wild-type and mutated sequences, calculate th
 
 ### Applications of SeqDance Embeddings
 **SeqDance embeddings** encode **rich biophysical properties** and outperform **ESM2-650M** in predicting **conformational properties** for both ordered and disordered proteins.  
-Code: [Embedding conformational property analysis](./notebook/embedding_conformation_property.ipynb)
+- Code: [Embedding conformational property analysis](./notebook/embedding_conformation_property.ipynb)
 
 ### SeqDance's attention
 **SeqDance's attention** effectively captures **protein dynamic interactions** from sequence alone, performing comparably to ESM2-35M while using only **1/1000th** of its training sequences.  
-Code: [Attention analysis](./notebook/attention_analysis.ipynb)
+- Code: [Attention analysis](./notebook/attention_analysis.ipynb)
 
 ## Protein Dynamic Dataset
 All datasets used in SeqDance are **publicly available**.
