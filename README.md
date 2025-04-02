@@ -41,7 +41,7 @@ Check the code [here](./notebook/zero_shot_mutation.ipynb) for how to perform ze
 
 
 ### Application of embeddings
-SeqDance embeddings encode rich biophysical properties 
+SeqDance embeddings encode rich biophysical properties, can be applied for downstream tasks and outperform ESM2-650M in predicting conformational properties for both ordered and disordered proteins, check the code [here](./notebook/embedding_conformation_property.ipynb)
 
 ### SeqDance's attention capture protein dynamic interactions
 
