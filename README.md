@@ -7,21 +7,25 @@ Proteins function by folding amino acid sequences into dynamic structural ensemb
 ![SeqDance Pre-training Diagram](image/SeqDance_pretraining.png "Diagram of SeqDance Pre-training")
 
 ## !!! Data and weight
-Training sequences and extracted features: [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties)
+Training sequences and extracted features: [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties)  
 Pre-trained SeqDance/ESMDance weights: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15047777.svg)](https://doi.org/10.5281/zenodo.15047777). 
 
 
 ## SeqDance/ESMDance Pre-training
 SeqDance and ESMDance, both consist of Transformer encoders and dynamic property prediction heads. The Transformer encoder follows the same architecture as ESM2-35M, with 12 layers and 20 attention heads per layer. Both models take protein sequences as input and predict residue-level and pairwise dynamic properties. The dynamic property prediction heads containing 1.2 million trainable parameters.  
-In SeqDance, all parameters were randomly initialized, allowing the model to learn dynamic properties from scratch. In ESMDance, all ESM2-35M parameters were frozen, enabling the model to leverage the evolutionary information captured by ESM2-35M to predict dynamic properties.
 
-For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
+In SeqDance, all parameters were randomly initialized, allowing the model to learn dynamic properties from scratch. In ESMDance, all ESM2-35M parameters were frozen, enabling the model to leverage the evolutionary information captured by ESM2-35M to predict dynamic properties. For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
+
+#### step 1
+Before pre-training, please download and process the data as described in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties). Change the file pathes in [config.py](./model/config.py).
+
+#### step 2
+For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). In our experiment, a new conda environment with pytorch=2.5.1, transformers=4.48.2, and h5py installed with conda also worked for the pre-training. 
 ```
 conda env create -f SeqDance_env.yml
 conda activate seqdance
 python -m torch.distributed.run --nnodes=1 --nproc_per_node=4 model/train_ddp.py
 ```
-In our experiment, a new conda environment with pytorch=2.5.1, transformers=4.48.2, and h5py installed with conda worked for the pre-training. We provide the training sequences and extracted features in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties), please process the data as described in Hugging face before pre-training the model.
 
 SeqDance/ESMDance were trained via [distributed data parallel](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html). The detailed hyperparameters are listed in [config](./model/config.py). The pre-training took ten days on a server with four L40s GPUs. 
 
