@@ -8,7 +8,8 @@ Proteins function by folding amino acid sequences into dynamic structural ensemb
 
 ## !!! Data and weight
 Training sequences and extracted features: [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties)  
-Pre-trained SeqDance/ESMDance weights: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15047777.svg)](https://doi.org/10.5281/zenodo.15047777) (use Version v2), [Hugging face SeqDance](https://huggingface.co/ChaoHou/SeqDance), [Hugging face ESMDance](https://huggingface.co/ChaoHou/ESMDance).
+Pre-trained SeqDance/ESMDance weights: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15047777.svg)](https://doi.org/10.5281/zenodo.15047777) (use Version v2), [Hugging face SeqDance](https://huggingface.co/ChaoHou/SeqDance), [Hugging face ESMDance](https://huggingface.co/ChaoHou/ESMDance).  
+Check the code [here](./notebook/zero_shot_mutation.ipynb) for how to load model, how to predict dynamic properties.
 
 
 ## SeqDance/ESMDance Pre-training
@@ -31,15 +32,16 @@ SeqDance/ESMDance were trained via [distributed data parallel](https://pytorch.o
 
 
 ## SeqDance/ESMDance Usage
+
 ### Zero-shot prediction of mutation effect
 Using SeqDance/ESMDance to predict the dynamic properties of both wild-type and mutated sequences, calculate the relative changes of dynamic properties after mutation, infer mutation effects with these relative changes.  
-check the code [here](./notebook/zero_shot_mutation.ipynb) for how to load model, how to predict dynamic properties, and how to perform zero-shot prediction of mutation effects (ESMDance and ESM2)
+Check the code [here](./notebook/zero_shot_mutation.ipynb) for how to perform zero-shot prediction of mutation effects (ESMDance and ESM2)
 
 ![Zero-shot](image/zero_shot.png "Zero-shot")
 
 
 ### Application of embeddings
-
+SeqDance embeddings encode rich biophysical properties 
 
 ### SeqDance's attention capture protein dynamic interactions
 
