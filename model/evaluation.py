@@ -34,8 +34,7 @@ def get_mean_loss_in_three_dataset(dance_model, three_dataset):
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 esm2_select = 'model_35M'
-model_select = 'seqdance'
-# model_select = 'esmdance'
+model_select = 'seqdance' # 'seqdance' or 'esmdance'
 dance_model = ESMwrap(esm2_select, model_select)
 
 # load the dataset
@@ -53,15 +52,13 @@ three_dataset = {
 }
 
 # evaluation
-model_date = '250217'
-
-for chk in range(190_000, 200_000+1, 1000):
-    checkpoint = torch.load(f'/nfs/user/Users/ch3849/ProDance/model/{model_date}/checkpoints/update_{chk}.pt')
+for chk in range(0, 200_000+1, 1000):
+    checkpoint = torch.load(f"{config['file_path']['save_dir']}/checkpoints/update_{chk}.pt")
     dance_model.load_state_dict(checkpoint, strict=False,)
     dance_model = dance_model.to(device)
     dance_model.eval()
     mean_loss = get_mean_loss_in_three_dataset(dance_model, three_dataset)
     mean_loss['checkpoint'] = chk
-    with open(f'/nfs/user/Users/ch3849/ProDance/model/{model_date}/evaluation_maxlen_{max_len}.json', 'a') as f:
+    with open(f"{config['file_path']['save_dir']}/evaluation_maxlen_{max_len}.json", 'a') as f:
         json.dump(mean_loss, f)
         f.write('\n')

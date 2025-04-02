@@ -1,4 +1,3 @@
-# python -m torch.distributed.run --nnodes=1 --nproc_per_node=4 model/train_ddp.py
 import os
 import time
 import pandas as pd
@@ -18,31 +17,32 @@ from config import config
 from model import ESMwrap
 from utils import WarmupDecaySchedule, calculate_loss, get_dataloader_cycle_iter
 
-# for Reproducibility
+# Set random seeds for reproducibility
 torch.manual_seed(config['training']['random_seed'])
 torch.cuda.manual_seed_all(config['training']['random_seed'])
 np.random.seed(config['training']['random_seed'])
 random.seed(config['training']['random_seed'])
 
 #############################################################
-# DDP model train
+# Distributed Data Parallel (DDP) model training function
 #############################################################
 def DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_update, short_update, save_per_update, get_dataloader_per_update, save_dir):
+    # Initialize distributed training environment using NCCL backend
     dist.init_process_group("nccl")
     rank = dist.get_rank()
     print(f"Start running DDP on rank {rank}.")
 
-    # create model and move it to GPU with id rank
+    # Assign device based on rank
     device_id = rank % torch.cuda.device_count()
     dance_model = dance_model.to(device_id)
     ddp_model = DDP(dance_model, device_ids=[device_id], find_unused_parameters=True)
 
-    """ mkdir, copy the code, save the initial model """
+    # Rank 0 handles saving model and setup: mkdir, copy the code, save the initial model
     if rank == 0:
         if save_dir is not None:
             os.makedirs(save_dir, exist_ok=True)
             # Copy the code to the save directory
-            shutil.copytree('/home/ch3849/ProDance/code_new/model/', os.path.join(save_dir, 'model'))
+            shutil.copytree('../model/', os.path.join(save_dir, 'model'))
             # Create a directory to save checkpoints
             os.makedirs(os.path.join(save_dir, "checkpoints"), exist_ok=True)
 
@@ -51,20 +51,21 @@ def DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_updat
         torch.save(ddp_model.module.state_dict(), chk_path)
         print("total trainable params: ",sum(p.numel() for p in ddp_model.parameters() if p.requires_grad))
 
+    # Define optimizer and learning rate scheduler
     optimizer = AdamW(ddp_model.parameters(), lr=1.0, betas=config['optimizer']['betas'], eps=config['optimizer']['epsilon'], weight_decay=config['optimizer']['weight_decay'])
     scheduler = WarmupDecaySchedule(optimizer, model_select)
 
-    # Enable AMP
+    # Automatic Mixed Precision (AMP) scaler for training efficiency
     scaler = GradScaler('cuda')
 
     start_time = time.time()
     n_update = 0 # update counter
     n_epoch = 0
     n_batch_in_epoch = 0
-    max_len = config[model_select]['max_len_short']
+    max_len = config[model_select]['max_len_short'] # start with short sequence length, change to long length after short_update
 
     while n_update <= total_update:
-        """ get the dataloader cycle iter, also change the max_len based on the number of update """
+        # Refresh dataloader periodically and adjust max sequence length
         if (n_batch_in_epoch/config[model_select][f'update_batch_{max_len}']) % get_dataloader_per_update == 0:
             log = {}
             n_epoch += 1
@@ -73,10 +74,10 @@ def DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_updat
             if n_update >= short_update:
                 max_len = config[model_select]['max_len_long']
 
+            # get the dataloader of three sources
             three_cycle_iter = get_dataloader_cycle_iter(df, h5py_read, esm2_select, max_len, config[model_select][f'batch_size_{max_len}'], n_update, device_id)
 
-        """ training """
-        # one batch contains samples from three sources
+        # TRAINING: one batch contains samples from three sources
         for source in three_cycle_iter:
             # get the data and move it to the device
             data = next(three_cycle_iter[source])
@@ -101,7 +102,7 @@ def DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_updat
         # update the batch counter after the for loop of three sources
         n_batch_in_epoch += 1
 
-        """ update the model """
+        # update the model
         if n_batch_in_epoch % config[model_select][f'update_batch_{max_len}'] == 0:
             scaler.unscale_(optimizer)
             nn.utils.clip_grad_value_(ddp_model.parameters(), 0.5)
@@ -112,7 +113,7 @@ def DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_updat
 
             n_update += 1
             
-            """ logging """
+            # logging
             if n_update % config['training']['report_per_update'] == 0:
                 update_time = time.time() - start_time
                 start_time = time.time()
@@ -127,7 +128,6 @@ def DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_updat
                     "Max_len": max_len,
                     **log
                 }
-                # print(log)
 
                 # write the log to file
                 with open(f"{save_dir}/training_log.json", "a") as f:
@@ -135,7 +135,7 @@ def DDP_model(esm2_select, model_select, dance_model, df, h5py_read, total_updat
                     f.write('\n')
                 log = {}
 
-            """ save the model """
+            # save the model
             if n_update % save_per_update == 0:
                 chk_path = os.path.join(save_dir, 'checkpoints', f'update_{n_update}.pt')
                 if rank == 0 and not os.path.exists(chk_path):
