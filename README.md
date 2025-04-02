@@ -8,7 +8,7 @@ Proteins function by folding amino acid sequences into dynamic structural ensemb
 
 ## !!! Data and weight
 Training sequences and extracted features: [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties)  
-Pre-trained SeqDance/ESMDance weights: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15047777.svg)](https://doi.org/10.5281/zenodo.15047777). 
+Pre-trained SeqDance/ESMDance weights: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15047777.svg)](https://doi.org/10.5281/zenodo.15047777) (use Version v2), [Hugging face SeqDance](https://huggingface.co/ChaoHou/SeqDance), [Hugging face ESMDance](https://huggingface.co/ChaoHou/ESMDance).
 
 
 ## SeqDance/ESMDance Pre-training
@@ -16,10 +16,10 @@ SeqDance and ESMDance, both consist of Transformer encoders and dynamic property
 
 In SeqDance, all parameters were randomly initialized, allowing the model to learn dynamic properties from scratch. In ESMDance, all ESM2-35M parameters were frozen, enabling the model to leverage the evolutionary information captured by ESM2-35M to predict dynamic properties. For details on the model architecture and pre-training process, please refer to codes in the [model](./model/) directory.
 
-#### step 1
-Before pre-training, please download and process the data as described in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties). Change the file pathes in [config.py](./model/config.py).
+#### Step 1
+Before pre-training, please download and process the data as described in [Hugging face](https://huggingface.co/datasets/ChaoHou/protein_dynamic_properties) (Merging HDF5 Files). Change the file pathes in [config.py](./model/config.py).
 
-#### step 2
+#### Step 2
 For detailed environment setup, please refer to [SeqDance_env.yml](SeqDance_env.yml). In our experiment, a new conda environment with pytorch=2.5.1, transformers=4.48.2, and h5py installed with conda also worked for the pre-training. 
 ```
 conda env create -f SeqDance_env.yml
@@ -32,7 +32,9 @@ SeqDance/ESMDance were trained via [distributed data parallel](https://pytorch.o
 
 ## SeqDance/ESMDance Usage
 ### Zero-shot prediction of mutation effect
-Using SeqDance/ESMDance to predict the dynamic properties of both wild-type and mutated sequences, calculate the relative changes of dynamic properties after mutation, infer mutation effects with these relative changes. 
+Using SeqDance/ESMDance to predict the dynamic properties of both wild-type and mutated sequences, calculate the relative changes of dynamic properties after mutation, infer mutation effects with these relative changes.  
+check the code [here](./notebook/zero_shot_mutation.ipynb) for how to load model, how to predict dynamic properties, and how to perform zero-shot prediction of mutation effects (ESMDance and ESM2)
+
 ![Zero-shot](image/zero_shot.png "Zero-shot")
 
 
