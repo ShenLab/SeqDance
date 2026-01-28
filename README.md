@@ -90,4 +90,5 @@ We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](
 
 ## Citation
 Chao Hou, Haiqing Zhao, Yufeng Shen. (2026) Protein language models trained on biophysical dynamics inform mutation effects. [PNAS](https://www.pnas.org/doi/10.1073/pnas.2530466123)
+
 A preprint is available on [bioRxiv](https://doi.org/10.1101/2024.10.11.617911)
