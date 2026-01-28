@@ -89,6 +89,5 @@ python NMA_features.py -i 2g3r.pdb -o nma_residue_pair_features_2g3r
 We recommend installing [GetContacts](https://getcontacts.github.io/), [MDTraj](https://www.mdtraj.org/), and [ProDy](http://www.bahargroup.org/prody/index.html) in separate conda environments. The **feature extraction process took over a month**.
 
 ## Citation
-SeqDance: A Protein Language Model for Representing Protein Dynamic Properties  
-**Chao Hou, Yufeng Shen**  
-**bioRxiv 2024.10.11.617911**; doi: [https://doi.org/10.1101/2024.10.11.617911](https://doi.org/10.1101/2024.10.11.617911)
+Chao Hou, Haiqing Zhao, Yufeng Shen. (2026) Protein language models trained on biophysical dynamics inform mutation effects. [PNAS](https://www.pnas.org/doi/10.1073/pnas.2530466123)
+A preprint is available on [bioRxiv](https://doi.org/10.1101/2024.10.11.617911)
